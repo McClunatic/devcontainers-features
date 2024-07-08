@@ -6,10 +6,10 @@ on:
         description: "List of features to execute tests against"
         required: true
         default: "go dotnet"
-      baseImage:
-        description: "Base image"
+      baseImages:
+        description: "JSON list of base images"
         required: true
-        default: "ubuntu:focal"
+        default: '["ubuntu:focal"]'
       logLevel:
         description: "Log Level (info/debug/trace)"
         required: true
@@ -18,11 +18,42 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        baseImage: ${{ fromJSON(github.event.inputs.baseImages) }}
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout CLI
+        uses: actions/checkout@v4
+        with:
+          repository: McClunatic/cli
+          ref: posix-features-test-lib
+          path: cli
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@microsoft'
+      - name: Install CLI Dependencies
+        working-directory: ./cli
+        run: yarn install --frozen-lockfile
+      - name: Type-Check CLI
+        working-directory: ./cli
+        run: yarn type-check
+      - name: Lint CLI
+        working-directory: ./cli
+        run: yarn lint
+      - name: Package CLI
+        working-directory: ./cli
+        run: yarn package
+      - name: Globally install CLI
+        working-directory: ./cli
+        run: |
+          VERSION=$(jq -r '.version' < package.json)
+          npm install -g "devcontainers-cli-${VERSION}.tgz"
 
-      - name: "Install latest devcontainer CLI"
-        run: npm install -g @devcontainers/cli
+      - name: Checkout Features
+        uses: actions/checkout@v4
 
-      - name: "Testing '${{ github.event.inputs.features }}' against '${{ github.event.inputs.baseImage }}'"
-        run: devcontainer features test --features ${{ github.event.inputs.features }} --base-image ${{ github.event.inputs.baseImage }} --log-level ${{ github.event.inputs.logLevel }} .
+      - name: "Testing '${{ github.event.inputs.features }}' against '${{ matrix.baseImage }}'"
+        run: devcontainer features test --features ${{ github.event.inputs.features }} --base-image ${{ matrix.baseImage }} --log-level ${{ github.event.inputs.logLevel }} .
