@@ -181,8 +181,8 @@ case ${ADJUSTED_ID} in
         # Include procps-ng for ps command
         check_packages openssh-server openssh-clients lsof openssl
         # Install procps-ng for ps, python3 docker systemctl replacement
-        check_packages procps-ng python3 python3-pip
-        pip3 install docker-systemctl-replacement --prefix /usr/local
+        check_packages procps-ng python3.12 python3.12-pip
+        pip3.12 install docker-systemctl-replacement --prefix /usr/local
         ;;
 esac
 
